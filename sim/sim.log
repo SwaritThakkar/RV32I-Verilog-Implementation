@@ -1,0 +1,79 @@
+============================================================
+RV32I Multi-Cycle Processor Testbench
+============================================================
+
+Test 1: ADD / SUB
+  [PASS] memory[0x00000100] = 0x00000016 (expected 0x00000016)
+  [PASS] memory[0x00000100] = 0x00000016 (expected 0x00000016)
+  [PASS] memory[0x00000104] = 0x00000008 (expected 0x00000008)
+
+Test 2: AND / OR / XOR
+  [PASS] memory[0x00000100] = 0x0000000f (expected 0x0000000f)
+  [PASS] memory[0x00000104] = 0x000000ff (expected 0x000000ff)
+  [PASS] memory[0x00000108] = 0x000000f0 (expected 0x000000f0)
+
+Test 3: SLT / SLTU
+  [PASS] memory[0x00000100] = 0x00000001 (expected 0x00000001)
+  [PASS] memory[0x00000104] = 0x00000000 (expected 0x00000000)
+  [PASS] memory[0x00000108] = 0x00000000 (expected 0x00000000)
+
+Test 4: ADDI / ANDI / ORI / XORI
+  [PASS] memory[0x00000100] = 0x00000064 (expected 0x00000064)
+  [PASS] memory[0x00000104] = 0x00000060 (expected 0x00000060)
+  [PASS] memory[0x00000108] = 0x0000006f (expected 0x0000006f)
+  [PASS] memory[0x0000010c] = 0xffffff9b (expected 0xffffff9b)
+
+Test 5: SLL / SRL / SRA
+  [PASS] memory[0x00000100] = 0x00000010 (expected 0x00000010)
+  [PASS] memory[0x00000104] = 0x0fffffff (expected 0x0fffffff)
+  [PASS] memory[0x00000108] = 0xffffffff (expected 0xffffffff)
+
+Test 6: SLLI / SRLI / SRAI
+  [PASS] memory[0x00000100] = 0x00000010 (expected 0x00000010)
+  [PASS] memory[0x00000104] = 0x0fffffff (expected 0x0fffffff)
+  [PASS] memory[0x00000108] = 0xffffffff (expected 0xffffffff)
+
+Test 7: LW / SW
+  [PASS] memory[0x00000100] = 0xdeadbeef (expected 0xdeadbeef)
+
+Test 8: LB / SB
+  [PASS] memory[0x00000100] = 0x000000c4 (expected 0x000000c4)
+  [PASS] memory[0x00000100] = 0x0000d3c4 (expected 0x0000d3c4)
+
+Test 9: LH / SH
+  [PASS] memory[0x00000100] = 0x00004321 (expected 0x00004321)
+  [PASS] memory[0x00000104] = 0x00008765 (expected 0x00008765)
+
+Test 10: BEQ BNE BLT BGE BLTU BGEU
+  [PASS] memory[0x00000100] = 0x00000001 (expected 0x00000001)
+  [PASS] memory[0x00000104] = 0x00000001 (expected 0x00000001)
+  [PASS] memory[0x00000108] = 0x00000001 (expected 0x00000001)
+  [PASS] memory[0x0000010c] = 0x00000001 (expected 0x00000001)
+
+Test 11: JAL
+  [PASS] memory[0x00000100] = 0x00000004 (expected 0x00000004)
+  [PASS] memory[0x00000104] = 0x00000001 (expected 0x00000001)
+
+Test 12: JALR
+  [PASS] memory[0x00000100] = 0x00000008 (expected 0x00000008)
+  [PASS] memory[0x00000104] = 0x00000001 (expected 0x00000001)
+
+Test 13: LUI
+  [PASS] memory[0x00000100] = 0xdeadb000 (expected 0xdeadb000)
+
+Test 14: AUIPC
+  [PASS] memory[0x00000100] = 0x00001000 (expected 0x00001000)
+
+Test 15: Loop program (sum 1..5)
+  [PASS] memory[0x00000100] = 0x0000000f (expected 0x0000000f)
+
+Test 16: Mixed program
+  [PASS] memory[0x00000100] = 0x0000003c (expected 0x0000003c)
+  [PASS] memory[0x00000104] = 0x00000001 (expected 0x00000001)
+  [PASS] memory[0x00000108] = 0xabcde123 (expected 0xabcde123)
+
+============================================================
+TEST SUMMARY: 38 PASSED, 0 FAILED out of 38 total
+ALL TESTS PASSED!
+============================================================
+tb/testbench.sv:503: $finish called at 9195000 (1ps)

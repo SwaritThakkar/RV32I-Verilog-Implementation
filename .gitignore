@@ -1,0 +1,16 @@
+# Simulation artifacts
+sim/rv_sim
+*.vvp
+*.vcd
+*.out
+a.out
+
+# Python (figure generation)
+__pycache__/
+*.pyc
+.venv/
+
+# OS / editor
+.DS_Store
+.vscode/
+.idea/
