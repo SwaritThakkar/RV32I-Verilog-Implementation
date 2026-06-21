@@ -211,3 +211,84 @@ from the two low address bits, and `x0` is hardwired to zero.
 Full details — including the ALU, immediate generation, branch logic, memory
 interface, and the complete verification matrix — are in
 [project_report.md](<project_report.md>).
+
+## Latency
+
+Being a multi-cycle design, the processor spends a fixed, instruction-dependent
+number of clock cycles per instruction rather than retiring one per cycle. Every
+instruction pays a common 5-cycle front end — a three-cycle fetch (`FETCH1→2→3`,
+which models the one-cycle latency of the mandated memory bus), `DECODE`, and
+`EXEC` — and then takes a different terminal path. Arithmetic/logical
+instructions, `LUI`, `AUIPC`, branches, and jumps finish in **6 cycles**; stores
+walk the three-state memory sequence for **8 cycles**; loads add a write-back and
+take **9 cycles**. There is no pipeline, so these cycle counts are also the CPI:
+effective performance ranges from CPI ≈ 6 on branch/ALU-heavy code to CPI ≈ 9 on
+load-bound code, and the wall-clock latency of any instruction is simply its
+cycle count times the clock period (e.g. at a 100 MHz / 10 ns clock, a load
+completes in ~90 ns and an ALU op in ~60 ns). Because every terminal state
+returns unconditionally to `FETCH1`, latency is fully deterministic — there are
+no stalls, variable-latency hazards, or misprediction penalties. The most
+direct way to cut it would be to collapse the three-cycle fetch (combinational
+instruction memory) or to pipeline the datapath; both are discussed in
+[project_report.md](<project_report.md>).
+
+## Runtime Analysis
+
+The total time a program takes is the sum of its per-instruction cycle counts
+multiplied by the clock period; with no pipeline and no variable-latency
+hazards, this is exact rather than statistical. The testbench clocks the core at
+`always #5 clk = ~clk`, i.e. a 10 ns period (**100 MHz**), so an ALU/branch/jump
+instruction takes 60 ns, a store 80 ns, and a load 90 ns. As a worked example,
+the *sum 1..5* loop program in Test 15 executes 19 dynamic instructions — three
+`addi` to initialise, then five iterations of `add`/`addi`/`blt` (15
+instructions), and a final `sw` to store the result. That is 18 six-cycle
+instructions plus one eight-cycle store, i.e. **116 clock cycles ≈ 1.16 µs** of
+core execution, and the program produces the correct answer (`0x0f`). End to
+end, the full self-checking testbench — all 16 programs, plus the five-cycle
+reset that precedes each one and the `wait_store` polling between checks — runs
+to completion in **9.195 µs of simulated time** (`$finish` at 9,195,000 ps),
+which is the figure reported in [sim/sim.log](sim/sim.log). The runtime is
+therefore data-independent in the sense that two programs with the same dynamic
+instruction mix always take the same number of cycles; the only knob that moves
+the wall-clock number is the dynamic instruction count (loop trip counts,
+branch outcomes) and the target clock frequency. Driving the same core at a
+higher `Fmax` scales every figure above down linearly without changing the
+cycle counts — and the next section establishes that real frequency by
+synthesis rather than by assumption.
+
+## Synthesis &amp; Maximum Clock Frequency
+
+The 100 MHz above is only the testbench's clock; the design's *real* speed
+limit is set by its longest combinational path. To measure it, the core was
+synthesised with [Yosys](https://yosyshq.net/yosys/) 0.66 and technology-mapped
+(ABC) onto the **Nangate45 Open Cell Library** (a real 45 nm-class standard-cell
+liberty, typical corner). Static timing on the mapped netlist reports:
+
+| Metric | Value |
+| --- | --- |
+| Critical-path delay | **1.75 ns** (1747 ps) |
+| **Maximum clock frequency** | **≈ 572 MHz** (1 / 1.75 ns) |
+| Critical path | `instr[1]` (opcode) → 31 levels of decode/ALU select logic → registered result mux |
+| Mapped area | ≈ 13,808 µm² (8568 cells, of which 1273 flip-flops) |
+
+The critical path runs from an opcode bit of the instruction register through
+the combinational decode and ALU/operand-select cone into the registered
+`exec_result`/next-state mux — i.e. the `EXEC` stage, as expected for a design
+whose datapath is otherwise shallow. **Important caveat:** this is a
+synthesis-/technology-mapping estimate with `WireLoad = none`, so it counts gate
+delays only — it excludes routing parasitics, clock skew/uncertainty, and setup
+margin. A realistic post-place-and-route target on the same process would be
+lower (typically 20–40 %), so the honest headline is *“synthesises to a 1.75 ns
+gate-level critical path, ≈ 570 MHz pre-layout on Nangate45.”*
+
+At this synthesised speed the cycle counts above translate to ≈ 10.5 ns per
+ALU/branch/jump, ≈ 14 ns per store, ≈ 15.7 ns per load, and the *sum 1..5* loop
+(116 cycles) completes in ≈ 203 ns. To reproduce:
+
+```bash
+yosys -p '
+  read_verilog -sv rtl/riscv_processor.sv
+  synth -top riscv_processor -flatten
+  dfflibmap -liberty nangate45.lib
+  abc -liberty nangate45.lib -script +strash;&get,-n;&dch,-f;&nf;&put;topo;stime'
+```
