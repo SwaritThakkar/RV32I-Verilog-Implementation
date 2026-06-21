@@ -1,8 +1,8 @@
 # Project Report — RV32I Multi-Cycle Processor
 
-![Synthesized RV32I RTL netlist](for_generating_readme/rtl_netlist_yosys.png)
+![RV32I multi-cycle datapath](for_generating_readme/datapath.png)
 
-<p align="center"><sub><b>The synthesized processor.</b> RTL netlist of <a href="rtl/riscv_processor.sv"><code>rtl/riscv_processor.sv</code></a> produced by <b>Yosys</b> and laid out with <b>Graphviz (sfdp)</b>. Each node is a real elaborated cell — ALU operators (<code>$add $sub $shl $sshr $and $or $xor</code>), multiplexers (<code>$mux $pmux</code>), the 32×32 register file (<code>$mem</code>), and the datapath/state registers (<code>$dff</code>) — wired exactly as the Verilog describes. Regenerate with <a href="for_generating_readme/generate_netlist_schematic.sh"><code>generate_netlist_schematic.sh</code></a>.</sub></p>
+<p align="center"><sub><b>The processor described by <a href="rtl/riscv_processor.sv"><code>rtl/riscv_processor.sv</code></a>.</b> Multi-cycle datapath rendered with <a href="https://d2lang.com"><b>d2</b></a>: solid arrows are data, dashed red lines are control from the FSM. Source: <a href="for_generating_readme/datapath.d2"><code>datapath.d2</code></a>.</sub></p>
 
 A from-scratch Verilog implementation of a RISC-V **RV32I** base-integer CPU,
 written for the *DAC-102 Verilog Project*. The processor implements the full
@@ -63,67 +63,14 @@ data access, and keep the critical path short, all without speculative logic.
 
 ## 2. Architecture Overview
 
-The annotated datapath below shows the same hardware as the synthesized netlist
-above, but organised the way it is reasoned about — the multi-cycle data-flow
-with the shared memory port, the operand/result registers, and the control FSM
-that sequences everything. `exec_result` is the single write-back source: ALU
-results, load data, `PC+4` (for jumps), and the upper-immediate forms all funnel
-through it before being written to `rd`.
+The hero diagram above gives the clean block-level overview. The annotated
+datapath below adds the signal-level detail — the operand registers
+(`rs1_val`/`rs2_val`), the ALU operand muxes, the load/store alignment unit, and
+the shared memory bus. `exec_result` is the single write-back source: ALU
+results, load data, `PC+4` (for jumps), and the upper-immediate forms
+(`LUI`/`AUIPC`) all funnel through it before being written to `rd`.
 
 ![Annotated RV32I datapath](for_generating_readme/processor_datapath_hero.png)
-
-A simplified view of the same flow as a block diagram:
-
-```mermaid
-%%{init: {
-  "theme": "base",
-  "themeVariables": {
-    "background": "#070A12",
-    "primaryColor": "#111827",
-    "primaryTextColor": "#D8DDF5",
-    "primaryBorderColor": "#64748B",
-    "lineColor": "#9CA3AF",
-    "secondaryColor": "#172033",
-    "tertiaryColor": "#0F172A",
-    "fontFamily": "Inter, Arial, sans-serif"
-  }
-}}%%
-flowchart LR
-    PC[PC]:::pc --> MEM[(Unified<br/>Memory)]:::mem
-
-    subgraph FE [Fetch / Decode]
-      direction TB
-      IR[Instruction<br/>Register]:::dp --> DEC[Decode fields<br/>opcode funct3 funct7]:::dec
-    end
-
-    subgraph EXU [Execute]
-      direction TB
-      RF[Register File<br/>32 x 32-bit]:::dp
-      IMM[Immediate Gen<br/>I S B U J]:::imm
-      ALU[ALU<br/>add sub and or xor<br/>sll srl sra slt sltu]:::dp
-      CMP{Branch<br/>Compare}:::dec
-    end
-
-    MEM -- mem_rdata --> IR
-    DEC --> RF & IMM
-    RF --> ALU & CMP
-    IMM --> ALU
-    ALU --> LSU[Load / Store<br/>align + mask]:::mem
-    ALU --> WB((Write<br/>back)):::wb
-    LSU -- mem_addr / wdata / wmask --> MEM
-    LSU --> WB
-    WB --> RF
-    CMP -- taken --> PC
-    CTRL[Control FSM<br/>11 states]:::ctrl -. sequences all units .-> EXU
-
-    classDef pc fill:#0B1020,stroke:#FFD34D,stroke-width:2px,color:#F8FAFC;
-    classDef dp fill:#111827,stroke:#60A5FA,stroke-width:1.6px,color:#D8DDF5;
-    classDef imm fill:#172033,stroke:#818CF8,stroke-width:1.6px,color:#E0E7FF;
-    classDef mem fill:#3B1D0B,stroke:#F97316,stroke-width:2px,color:#FFEDD5;
-    classDef dec fill:#1E1B4B,stroke:#60A5FA,stroke-width:2px,color:#E0F2FE;
-    classDef wb fill:#123524,stroke:#6EE7B7,stroke-width:2px,color:#DCFCE7;
-    classDef ctrl fill:#4A102A,stroke:#F43F5E,stroke-width:2px,color:#FFE4E6;
-```
 
 The datapath is built from the classic RISC building blocks, each kept as a
 small, independently testable unit:
@@ -448,9 +395,10 @@ bugs.
 │   ├── run.sh                  # one-command build + run (iverilog + vvp)
 │   └── sim.log                 # committed simulation transcript (38/38 pass)
 ├── for_generating_readme/
+│   ├── datapath.d2             # hero datapath (d2 source) -> datapath.png/.svg
 │   ├── generate_figures.py     # regenerates the dark-themed raster figures
-│   └── *.png                   # formats, instruction table, timeline, results
-│                               # (datapath + FSM are Mermaid blocks inline)
+│   └── *.png                   # datapath, formats, instr table, timeline, results
+│                               # (the control FSM is a Mermaid block inline)
 ├── docs/
 │   └── assignment_spec.pdf     # original assignment specification
 ├── project_report.md           # this report

@@ -1,8 +1,8 @@
 # RV32I Multi-Cycle Processor (Verilog)
 
-![Synthesized RV32I RTL netlist](for_generating_readme/rtl_netlist_yosys.png)
+![RV32I multi-cycle datapath](for_generating_readme/datapath.png)
 
-<p align="center"><sub><b>The actual processor.</b> Synthesized RTL netlist of <code>rtl/riscv_processor.sv</code>, generated with <b>Yosys</b> and laid out with <b>Graphviz (sfdp)</b> — every node is a real elaborated cell: <span>ALU operators</span> (<code>$add $sub $shl $sshr $and $or $xor</code>), multiplexers (<code>$mux $pmux</code>), the 32×32 register file (<code>$mem</code>), and the 11 state/datapath registers (<code>$dff</code>). Reproduce with <a href="for_generating_readme/generate_netlist_schematic.sh"><code>generate_netlist_schematic.sh</code></a>.</sub></p>
+<p align="center"><sub><b>The processor described by <a href="rtl/riscv_processor.sv"><code>rtl/riscv_processor.sv</code></a>.</b> Multi-cycle datapath rendered with <a href="https://d2lang.com"><b>d2</b></a>. Solid arrows are data; dashed red lines are control. The single 11-state FSM sequences <code>FETCH1·2·3 → DECODE → EXEC → { WB | MEM1·2·3 | BRANCH | JUMP } → FETCH1</code>, and every result — ALU output, load data, <code>PC+4</code>, and the upper-immediate forms — funnels through <code>exec_result</code> before write-back to <code>rd</code>. Source: <a href="for_generating_readme/datapath.d2"><code>datapath.d2</code></a>.</sub></p>
 
 ## This is not the Project Report; for the full design write-up, see [project_report.md](<project_report.md>).
 
@@ -31,9 +31,9 @@ discussion, read [project_report.md](<project_report.md>).
 │   ├── run.sh                      # One-command build + run (iverilog + vvp)
 │   └── sim.log                     # Committed simulation transcript (38/38 pass)
 ├── for_generating_readme/          # Figure tooling + generated assets
+│   ├── datapath.d2                 # hero datapath source (d2)
+│   ├── datapath.{png,svg}          # rendered hero datapath
 │   ├── generate_figures.py         # matplotlib plots (dark theme)
-│   ├── generate_netlist_schematic.sh  # Yosys + Graphviz hero netlist
-│   ├── rtl_netlist_yosys.{png,svg} # synthesized RTL netlist (hero)
 │   └── *.png
 ├── docs/
 │   └── assignment_spec.pdf         # Original assignment specification
@@ -113,18 +113,19 @@ timeline, test results, annotated datapath) are produced by matplotlib:
 python for_generating_readme/generate_figures.py   # after a fresh sim/sim.log
 ```
 
-The **hero netlist schematic** is generated from the RTL itself with real EDA
-tooling — Yosys synthesizes the Verilog, a small Python pass applies the dark
-theme and colours cells by operator, Graphviz's `sfdp` engine lays it out, and
-`rsvg-convert` rasterises it:
+The **hero datapath** is authored in [d2](https://d2lang.com) and rendered to
+SVG/PNG:
 
 ```bash
-bash for_generating_readme/generate_netlist_schematic.sh
+d2 --layout dagre --theme 200 --pad 40 \
+   for_generating_readme/datapath.d2 for_generating_readme/datapath.svg
+rsvg-convert -w 3000 for_generating_readme/datapath.svg \
+   -o for_generating_readme/datapath.png
 ```
 
-Requires `yosys`, `graphviz`, and `librsvg` (`brew install yosys graphviz librsvg`).
-The datapath and control-FSM block diagrams are authored as Mermaid directly in
-[project_report.md](<project_report.md>), so they render on GitHub with no build
+Requires `d2` and `librsvg` (`brew install d2 librsvg`). The control-FSM block
+diagram is authored as a Mermaid block directly in
+[project_report.md](<project_report.md>), so it renders on GitHub with no build
 step.
 
 ## Method Summary
