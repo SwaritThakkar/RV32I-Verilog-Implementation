@@ -1,5 +1,9 @@
 # RV32I Multi-Cycle Processor (Verilog)
 
+![Synthesized RV32I RTL netlist](for_generating_readme/rtl_netlist_yosys.png)
+
+<p align="center"><sub><b>The actual processor.</b> Synthesized RTL netlist of <code>rtl/riscv_processor.sv</code>, generated with <b>Yosys</b> and laid out with <b>Graphviz (sfdp)</b> — every node is a real elaborated cell: <span>ALU operators</span> (<code>$add $sub $shl $sshr $and $or $xor</code>), multiplexers (<code>$mux $pmux</code>), the 32×32 register file (<code>$mem</code>), and the 11 state/datapath registers (<code>$dff</code>). Reproduce with <a href="for_generating_readme/generate_netlist_schematic.sh"><code>generate_netlist_schematic.sh</code></a>.</sub></p>
+
 ## This is not the Project Report; for the full design write-up, see [project_report.md](<project_report.md>).
 
 A from-scratch **RISC-V RV32I** processor written in Verilog/SystemVerilog for
@@ -26,8 +30,10 @@ discussion, read [project_report.md](<project_report.md>).
 ├── sim/
 │   ├── run.sh                      # One-command build + run (iverilog + vvp)
 │   └── sim.log                     # Committed simulation transcript (38/38 pass)
-├── for_generating_readme/          # Dark-themed figure scripts + generated PNGs
-│   ├── generate_figures.py
+├── for_generating_readme/          # Figure tooling + generated assets
+│   ├── generate_figures.py         # matplotlib plots (dark theme)
+│   ├── generate_netlist_schematic.sh  # Yosys + Graphviz hero netlist
+│   ├── rtl_netlist_yosys.{png,svg} # synthesized RTL netlist (hero)
 │   └── *.png
 ├── docs/
 │   └── assignment_spec.pdf         # Original assignment specification
@@ -96,19 +102,30 @@ iverilog -g2012 -o sim/rv_sim 25323045_riscv.v tb/testbench.sv  # see note below
 > The bundled testbench instantiates `riscv_processor`; the automated grader
 > instantiates `\25323045_riscv`. Both forms are verified equivalent.
 
-## Optional: Regenerate Report Figures
+## Optional: Regenerate Figures
 
-The dark-themed figures in `for_generating_readme/` are already committed. To
-regenerate them (after running the testbench so `sim/sim.log` is fresh):
+All figures in `for_generating_readme/` are already committed.
+
+The dark-themed plots (instruction formats, instruction table, execution
+timeline, test results, annotated datapath) are produced by matplotlib:
 
 ```bash
-python for_generating_readme/generate_figures.py
+python for_generating_readme/generate_figures.py   # after a fresh sim/sim.log
 ```
 
-This re-creates the instruction-format, instruction-table, execution-timeline,
-and test-result images used in [project_report.md](<project_report.md>). The
-datapath and control-FSM diagrams are authored as Mermaid blocks directly in
-the report, so they render on GitHub without any build step.
+The **hero netlist schematic** is generated from the RTL itself with real EDA
+tooling — Yosys synthesizes the Verilog, a small Python pass applies the dark
+theme and colours cells by operator, Graphviz's `sfdp` engine lays it out, and
+`rsvg-convert` rasterises it:
+
+```bash
+bash for_generating_readme/generate_netlist_schematic.sh
+```
+
+Requires `yosys`, `graphviz`, and `librsvg` (`brew install yosys graphviz librsvg`).
+The datapath and control-FSM block diagrams are authored as Mermaid directly in
+[project_report.md](<project_report.md>), so they render on GitHub with no build
+step.
 
 ## Method Summary
 

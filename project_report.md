@@ -1,5 +1,9 @@
 # Project Report — RV32I Multi-Cycle Processor
 
+![Synthesized RV32I RTL netlist](for_generating_readme/rtl_netlist_yosys.png)
+
+<p align="center"><sub><b>The synthesized processor.</b> RTL netlist of <a href="rtl/riscv_processor.sv"><code>rtl/riscv_processor.sv</code></a> produced by <b>Yosys</b> and laid out with <b>Graphviz (sfdp)</b>. Each node is a real elaborated cell — ALU operators (<code>$add $sub $shl $sshr $and $or $xor</code>), multiplexers (<code>$mux $pmux</code>), the 32×32 register file (<code>$mem</code>), and the datapath/state registers (<code>$dff</code>) — wired exactly as the Verilog describes. Regenerate with <a href="for_generating_readme/generate_netlist_schematic.sh"><code>generate_netlist_schematic.sh</code></a>.</sub></p>
+
 A from-scratch Verilog implementation of a RISC-V **RV32I** base-integer CPU,
 written for the *DAC-102 Verilog Project*. The processor implements the full
 RV32I user-level integer instruction set (all 37 instructions) except the
@@ -58,6 +62,17 @@ data access, and keep the critical path short, all without speculative logic.
 ---
 
 ## 2. Architecture Overview
+
+The annotated datapath below shows the same hardware as the synthesized netlist
+above, but organised the way it is reasoned about — the multi-cycle data-flow
+with the shared memory port, the operand/result registers, and the control FSM
+that sequences everything. `exec_result` is the single write-back source: ALU
+results, load data, `PC+4` (for jumps), and the upper-immediate forms all funnel
+through it before being written to `rd`.
+
+![Annotated RV32I datapath](for_generating_readme/processor_datapath_hero.png)
+
+A simplified view of the same flow as a block diagram:
 
 ```mermaid
 %%{init: {
