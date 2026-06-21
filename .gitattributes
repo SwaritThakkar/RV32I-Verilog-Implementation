@@ -1,0 +1,8 @@
+# Report the design language as (System)Verilog, not the helper tooling.
+*.sv linguist-language=SystemVerilog
+*.v  linguist-language=Verilog
+
+# Keep figure/report tooling and artifacts out of the language statistics.
+for_generating_readme/** linguist-documentation
+docs/**                  linguist-documentation
+sim/sim.log              linguist-generated
