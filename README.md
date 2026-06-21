@@ -1,8 +1,86 @@
 # RV32I Multi-Cycle Processor (Verilog)
 
-![RV32I multi-cycle datapath](for_generating_readme/datapath.png)
+```mermaid
+%%{init: {
+  "theme": "base",
+  "themeVariables": {
+    "background": "#070A12",
+    "primaryColor": "#111827",
+    "primaryTextColor": "#E6EAF7",
+    "primaryBorderColor": "#334155",
+    "lineColor": "#8aa0c6",
+    "fontFamily": "Inter, Segoe UI, Arial, sans-serif",
+    "fontSize": "15px",
+    "clusterBkg": "#0b1220",
+    "clusterBorder": "#243149"
+  },
+  "flowchart": { "curve": "basis", "nodeSpacing": 40, "rankSpacing": 60, "htmlLabels": true, "padding": 10 }
+}}%%
+flowchart LR
+    PC(["PC"]):::pc
 
-<p align="center"><sub><b>The processor described by <a href="rtl/riscv_processor.sv"><code>rtl/riscv_processor.sv</code></a>.</b> Multi-cycle datapath rendered with <a href="https://d2lang.com"><b>d2</b></a>. Solid arrows are data; dashed red lines are control. The single 11-state FSM sequences <code>FETCH1·2·3 → DECODE → EXEC → { WB | MEM1·2·3 | BRANCH | JUMP } → FETCH1</code>, and every result — ALU output, load data, <code>PC+4</code>, and the upper-immediate forms — funnels through <code>exec_result</code> before write-back to <code>rd</code>. Source: <a href="for_generating_readme/datapath.d2"><code>datapath.d2</code></a>.</sub></p>
+    subgraph FE["①  FETCH&nbsp;&nbsp;"]
+        direction TB
+        MEM[("Unified<br/>Memory")]:::mem
+        IR["Instruction<br/>Register"]:::reg
+    end
+
+    subgraph DE["②  DECODE&nbsp;&nbsp;"]
+        direction TB
+        DEC["Decoder<br/><small>opcode · funct3 · funct7</small>"]:::dec
+        RF["Register File<br/><small>32 × 32-bit</small>"]:::reg
+        IMM["Immediate Gen<br/><small>I S B U J</small>"]:::imm
+    end
+
+    subgraph EX["③  EXECUTE&nbsp;&nbsp;"]
+        direction TB
+        ALU{{"ALU<br/><small>add sub sll slt<br/>xor srl sra or and</small>"}}:::alu
+        CMP{"Branch<br/>Compare"}:::cmp
+    end
+
+    subgraph MM["④  MEMORY&nbsp;&nbsp;"]
+        direction TB
+        LSU["Load / Store<br/><small>align + mask</small>"]:::mem
+    end
+
+    subgraph WB["⑤  WRITE-BACK&nbsp;&nbsp;"]
+        direction TB
+        EXEC(["exec_result"]):::wb
+    end
+
+    FSM["⚙ CONTROL FSM<br/><small>FETCH1·2·3 → DECODE → EXEC →<br/>WB / MEM / BRANCH / JUMP</small>"]:::ctrl
+
+    PC ==> MEM
+    MEM == "mem_rdata" ==> IR
+    IR --> DEC
+    DEC -- "rs1 · rs2" --> RF
+    DEC --> IMM
+    RF -- "rs1_val" --> ALU
+    IMM -- "imm" --> ALU
+    RF --> CMP
+    ALU == "mem_address" ==> LSU
+    ALU -- "result" --> EXEC
+    LSU -- "load data" --> EXEC
+    EXEC == "regfile[rd]" ==> RF
+    CMP -. "taken" .-> PC
+    EXEC -. "next PC" .-> PC
+    FSM -. "sequences" .-> EX
+    FSM -. " " .-> MM
+
+    classDef pc   fill:#0B1020,stroke:#FFD34D,stroke-width:2.5px,color:#FDE68A;
+    classDef reg  fill:#101c30,stroke:#60A5FA,stroke-width:2px,color:#DCE6FF;
+    classDef imm  fill:#191634,stroke:#8B93F8,stroke-width:2px,color:#E2E0FF;
+    classDef dec  fill:#1b1740,stroke:#A5B4FC,stroke-width:2px,color:#E6E9FF;
+    classDef alu  fill:#13243d,stroke:#FACC15,stroke-width:3px,color:#FDE68A;
+    classDef cmp  fill:#1b1740,stroke:#A5B4FC,stroke-width:2px,color:#E6E9FF;
+    classDef mem  fill:#2a1408,stroke:#F97316,stroke-width:2.5px,color:#FFE3C7;
+    classDef wb   fill:#0f2a1e,stroke:#6EE7B7,stroke-width:3px,color:#CFFCE6;
+    classDef ctrl fill:#2a0f1c,stroke:#F43F5E,stroke-width:3px,color:#FFD9E0;
+
+    linkStyle default stroke-width:2px;
+```
+
+<p align="center"><sub><b>The RV32I multi-cycle datapath.</b> A value flows left → right through five stages; the control FSM sequences every step, and <code>exec_result</code> is the single write-back source. Faithful to <a href="rtl/riscv_processor.sv"><code>rtl/riscv_processor.sv</code></a>.</sub></p>
 
 ## This is not the Project Report; for the full design write-up, see [project_report.md](<project_report.md>).
 
@@ -31,10 +109,8 @@ discussion, read [project_report.md](<project_report.md>).
 │   ├── run.sh                      # One-command build + run (iverilog + vvp)
 │   └── sim.log                     # Committed simulation transcript (38/38 pass)
 ├── for_generating_readme/          # Figure tooling + generated assets
-│   ├── datapath.d2                 # hero datapath source (d2)
-│   ├── datapath.{png,svg}          # rendered hero datapath
 │   ├── generate_figures.py         # matplotlib plots (dark theme)
-│   └── *.png
+│   └── *.png                       # formats, instr table, timeline, results
 ├── docs/
 │   └── assignment_spec.pdf         # Original assignment specification
 ├── project_report.md               # Full project report and design logic
@@ -104,28 +180,17 @@ iverilog -g2012 -o sim/rv_sim 25323045_riscv.v tb/testbench.sv  # see note below
 
 ## Optional: Regenerate Figures
 
-All figures in `for_generating_readme/` are already committed.
-
-The dark-themed plots (instruction formats, instruction table, execution
-timeline, test results, annotated datapath) are produced by matplotlib:
+All figures in `for_generating_readme/` are already committed. The dark-themed
+plots (instruction formats, instruction table, execution timeline, test
+results) are produced by matplotlib:
 
 ```bash
 python for_generating_readme/generate_figures.py   # after a fresh sim/sim.log
 ```
 
-The **hero datapath** is authored in [d2](https://d2lang.com) and rendered to
-SVG/PNG:
-
-```bash
-d2 --layout dagre --theme 200 --pad 40 \
-   for_generating_readme/datapath.d2 for_generating_readme/datapath.svg
-rsvg-convert -w 3000 for_generating_readme/datapath.svg \
-   -o for_generating_readme/datapath.png
-```
-
-Requires `d2` and `librsvg` (`brew install d2 librsvg`). The control-FSM block
-diagram is authored as a Mermaid block directly in
-[project_report.md](<project_report.md>), so it renders on GitHub with no build
+The **hero datapath** and the **control-FSM** diagram are authored as
+[Mermaid](https://mermaid.js.org) blocks directly in this README and in
+[project_report.md](<project_report.md>), so they render on GitHub with no build
 step.
 
 ## Method Summary
